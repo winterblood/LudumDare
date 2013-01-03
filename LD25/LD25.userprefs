@@ -1,0 +1,20 @@
+﻿<Properties>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\GuardBehaviour.cs">
+    <Files>
+      <File FileName="Assets\GuardBehaviour.cs" Line="3" Column="1" />
+      <File FileName="Assets\GameGUI.cs" Line="33" Column="32" />
+      <File FileName="Assets\Interactive.cs" Line="30" Column="4" />
+      <File FileName="Assets\Fadeout.cs" Line="21" Column="4" />
+      <File FileName="Assets\Touch.cs" Line="18" Column="100" />
+      <File FileName="Assets\InactiveAtStart.cs" Line="14" Column="24" />
+      <File FileName="Assets\ScrollTextureUVs.cs" Line="18" Column="56" />
+      <File FileName="Assets\CollectGold.cs" Line="16" Column="4" />
+      <File FileName="Assets\LightJitter.cs" Line="54" Column="4" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>

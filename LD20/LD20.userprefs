@@ -1,0 +1,16 @@
+﻿<Properties>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\GameGUI.cs">
+    <Files>
+      <File FileName="Assets\Scripts\CharacterMotor.js" Line="33" Column="1" />
+      <File FileName="Assets\Scripts\TowerGenerator.cs" Line="33" Column="26" />
+      <File FileName="Assets\Scripts\FPSInputController.js" Line="12" Column="2" />
+      <File FileName="Assets\Standard Assets\Character Controllers\Sources\Scripts\MouseLook.cs" Line="38" Column="11" />
+      <File FileName="Assets\Scripts\GameGUI.cs" Line="153" Column="11" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>
