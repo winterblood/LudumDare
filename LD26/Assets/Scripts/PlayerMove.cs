@@ -29,8 +29,14 @@ public class PlayerMove : MonoBehaviour
 	public float chaseCamYawSpeed;
 	public float chaseCamPitchSpeed;
 	public float chaseCamLookSeek;
+	public float chaseCamGroundAvoid = 1.0f;
 	private Vector3 chaseCamPos;
-	private Vector3 chaseCamVel;	
+	private Vector3 chaseCamVel;
+	private float currentCamTerrainY;	
+
+	// Interaction with world
+	private Landscape landscape;
+	private float currentTerrainY;
 	
 	// Use this for initialization
 	void Start ()
@@ -43,6 +49,9 @@ public class PlayerMove : MonoBehaviour
 		chaseCamPos.y += chaseCamTgtHeight;
 		chaseCamVel = Vector3.zero;
 		lookVelocity = Vector3.zero;
+		
+		GameObject landscapeObj = GameObject.Find( "Landscape" );
+		landscape = landscapeObj.GetComponent<Landscape>();
 	}
 	
 	bool IsOnGround()
@@ -149,6 +158,9 @@ public class PlayerMove : MonoBehaviour
 	
 	void ProcessChaseCam()
 	{
+		currentTerrainY = landscape.GetTerrainHeight( transform.position.x, transform.position.z );		// player
+		currentCamTerrainY = landscape.GetTerrainHeight( chaseCamPos.x, chaseCamPos.z );				// camera
+	
 		Vector3 vecToPlayer = transform.position - chaseCamPos;
 		Vector3 vecToPlayerXZ = vecToPlayer;
 		vecToPlayerXZ.y = 0.0f;
@@ -171,14 +183,32 @@ public class PlayerMove : MonoBehaviour
 		chaseCamVel += Camera.main.transform.right * lookVelocity.x * -chaseCamYawSpeed;
 		if (xzDist > 1.0f)
 			chaseCamVel += Camera.main.transform.up * lookVelocity.y * chaseCamPitchSpeed;
+			
+		float distUnderSafeY = (currentCamTerrainY + chaseCamGroundAvoid) - chaseCamPos.y;
+		if (distUnderSafeY > 0.0f)
+		{
+			//Vector3 v = Vector3.up * distUnderSafeY;
+			//Debug.DrawRay( transform.position + Vector3.up, v, Color.yellow ); 
+			chaseCamVel += Camera.main.transform.up * distUnderSafeY;
+		}
 		
 		// TODO: Seeking is juddery, figure out why
 		chaseCamPos += chaseCamVel * Time.deltaTime * chaseCamSeekSpeed;
 		
+		if (chaseCamPos.y < currentCamTerrainY + 0.5f)
+			chaseCamPos.y = currentCamTerrainY + 0.5f;
 		
 		// Snap main cam to chase cam pos
 		Camera.main.transform.position = chaseCamPos;
 		Camera.main.transform.LookAt( transform );
+	}
+	
+	void QuickenWorld()
+	{
+		if (transform.position.y - currentTerrainY < 0.9f)
+		{
+			landscape.ColourTexture( transform.position, 0.5f, Color.green );
+		}
 	}
 	
 	// Update is called once per frame
@@ -187,6 +217,7 @@ public class PlayerMove : MonoBehaviour
 		ProcessChaseCam();
 		HandleInput();
 		ApplyInput();
+		QuickenWorld();
 		
 		timeSinceOnGround += Time.deltaTime;
 	}

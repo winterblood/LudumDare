@@ -3,28 +3,35 @@ using System.Collections;
 
 public class Landscape : MonoBehaviour
 {
-	public float islandRadius;
-	public float verticalStretch;
+	public float scale 				= 0.2f;
+	public float verticalStretch 	= 25.0f;
+	public float islandRadius 		= 60.0f;
+	public float uvFudge			= 0.975f;	// Awful hack to line texture alterations up with player, couldn't find the root error
+	
+	public GameObject treePrefab;
 	
 	// Internal vars
 	private Mesh emptyMesh;
 	private Texture2D texture;
 	private Vector3[] vertices;
 	private Vector2[] uv;
-	private Vector3[] normals;
+	//private Vector3[] normals;
 	private float[] heightfield;
 	private int[] triangles;
 	private int width 	= 128;
 	private int height 	= 128;
-	private float mapsize = 100.0f;
-	
+	private int texSize	= 256;
+	private float mapsize = 200.0f;
+	private int framecount = 0;
+	private GameObject megaTree;
+		
 	private Perlin 			perlin;
-	//private FractalNoise 	fractal;
 	
 	// Use this for initialization
 	void Start ()
 	{
 		perlin = new Perlin();
+		mapsize = islandRadius * 2.0f;
 		
 		// Create the game object containing the renderer
 		gameObject.AddComponent<MeshFilter>();
@@ -44,12 +51,13 @@ public class Landscape : MonoBehaviour
 		// Allocate all storage for mesh, since size will not vary on regeneration - only content				
 		vertices 	= new Vector3[height * width];
 		uv 			= new Vector2[height * width];
-		normals 	= new Vector3[height * width];
+		//normals 	= new Vector3[height * width];
 		heightfield = new float[(height+2) * (width+2)];
 		triangles 	= new int[(height - 1) * (width - 1) * 6];
-		texture 	= new Texture2D( width, height, TextureFormat.RGB24, true, true);
-		texture.filterMode = FilterMode.Trilinear;
+		texture 	= new Texture2D( texSize, texSize, TextureFormat.RGB24, false, true);
+		texture.filterMode = FilterMode.Bilinear;
 	
+		renderer.castShadows	= false;
 		renderer.material.color = Color.white;
 		renderer.material.mainTexture = texture;
 		renderer.material.mainTexture.wrapMode = TextureWrapMode.Clamp;
@@ -65,7 +73,7 @@ public class Landscape : MonoBehaviour
 			return 0.0f;
 		
 		localScale = (distFromOrigin/islandRadius);
-		localScale = (1.0f - localScale)*(1.0f - localScale);	// Inverted square curve to get steeper shores
+		localScale = 1.0f-(localScale*localScale);	// square curve to get steeper shores
 		
 		/*
 		float jagginess = 0.75f * (1.0f + fractal.HybridMultifractal( (x+jaggiScale)*scale*oneOverJagginessScale, y*scale*oneOverJagginessScale, offset ));
@@ -75,11 +83,32 @@ public class Landscape : MonoBehaviour
 		pixelHeight += fractal.HybridMultifractal( x*scale*oneOverMegaScale, y*scale*oneOverMegaScale, offset ) * megaScale;
 		*/
 		
-		float pixelHeight = 1.0f + perlin.Noise( x, y );
+		float pixelHeight = 1.0f + perlin.Noise( x*scale, y*scale );
 		
 		pixelHeight *= verticalStretch * localScale;
 		
 		return pixelHeight;
+	}
+	
+	public float GetTerrainHeight( float x, float z )
+	{
+		// Map world coords to cell
+		float lx = (x + mapsize * 0.5f)*(width-2.0f)/mapsize;
+		float ly = (z + mapsize * 0.5f)*(height-2.0f)/mapsize;
+		int cx = (int)lx;
+		int cy = (int)ly;
+		lx -= cx;		// Calc fractions across cell
+		ly -= cy;
+		
+		float p1 = heightfield[cy*(width+2)+cx];
+		float p2 = heightfield[cy*(width+2)+cx+1];
+		float p3 = heightfield[(cy+1)*(width+2)+cx];
+		float p4 = heightfield[(cy+1)*(width+2)+cx+1];
+		
+		float tx = p1*(1.0f-lx) + p2*lx;	// Top edge
+		float bx = p3*(1.0f-lx) + p4*lx;	// Bottom edge
+		
+		return tx*(1.0f-ly) + bx*ly;
 	}
 	
 	void GenerateMesh()
@@ -96,50 +125,67 @@ public class Landscape : MonoBehaviour
 		float oneOverXCells = 1.0f / (float)(width-1);
 		float oneOverZCells = 1.0f / (float)(height-1);
 		
-		// Pass one - fill in corner heights
+		// Pass one - fill in corner heights, and remember highest point!
 		Debug.Log(" Pass 1 - fill in fractal points");
+		
+		int highestx = 0;
+		int highesty = 0;
+		float highest = -999.0f;
 		for (int y=0; y<=height; y++)
 		{
 			for (int x=0; x<=width; x++)
 			{
-				float pixelHeight = GetFractal( transform.position.x+(x*mapsize*oneOverXCells),
-				                                transform.position.z+(y*mapsize*oneOverZCells) );
+				float pixelHeight = GetFractal( transform.position.x-mapsize*0.5f+(x*mapsize*oneOverXCells),
+				                                transform.position.z-mapsize*0.5f+(y*mapsize*oneOverZCells) );
 				heightfield[y*(width+2) + x] = pixelHeight;
+				
+				if (pixelHeight > highest)
+				{
+					highest = pixelHeight;
+					highestx = x;
+					highesty = y;
+				}
 			}
 		}
 		
 		// Pass two - generate geometry
 		Debug.Log(" Pass 2 - generate geometry");
-		float checkDimness = 0.8f;
+		
 		for (int y=0; y<height; y++)
 		{
 			for (int x=0; x<width; x++)
-			{
-				Color col = Color.white;
-			
-				float p1 = heightfield[y*(width+2)+x];
-				float p2 = heightfield[y*(width+2)+x+1];
-				float p3 = heightfield[(y+1)*(width+2)+x];
-				float p4 = heightfield[(y+1)*(width+2)+x+1];
+			{			
+				//float p1 = heightfield[y*(width+2)+x];
+				//float p2 = heightfield[y*(width+2)+x+1];
+				//float p3 = heightfield[(y+1)*(width+2)+x];
+				//float p4 = heightfield[(y+1)*(width+2)+x+1];
 	
 				Vector3 vertex;
-				vertex.x = mapsize*x/(width-2.0f);
-				vertex.z = mapsize*y/(height-2.0f);
-				vertex.y = 0.0f; //heightfield[y*(width+2)+x];
-				Debug.Log("V"+x+"."+y+" "+vertex.x+", "+vertex.z);
+				vertex.x = mapsize*x/(width-2.0f) - mapsize * 0.5f;
+				vertex.z = mapsize*y/(height-2.0f) - mapsize * 0.5f;
+				vertex.y = heightfield[y*(width+2)+x];
 				
 				vertices[y*width + x] = vertex;
 				Vector2 temp_uv = new Vector2((float)x, (float)y);
 				uv[y*width + x] = Vector2.Scale(temp_uv, uvScale);
-				
-				normals[y*width + x] = Vector3.up;
-				
-				texture.SetPixel(x, y, col);		
+			}
+		}
+		
+		Color col = Color.white;
+		for (int y=0; y<texSize; y++)
+		{
+			for (int x=0; x<texSize; x++)
+			{
+				float rand_unit = Random.value;
+				rand_unit *= 0.1f;
+				rand_unit += 0.9f;
+				col.r = col.g = col.b = rand_unit;
+				texture.SetPixel(x, y, col);
 			}
 		}
 		
 		// Pass 4 - build index buffer
-		//Debug.Log(" Pass 4 - build index buffer");
+		Debug.Log(" Pass 4 - build index buffer");
 		
 		texture.Apply();
 		
@@ -161,26 +207,13 @@ public class Landscape : MonoBehaviour
 				
 				if (p1+p2+p3+p4 > 0.001f)	// Skip generating triangles at water level
 				{
-					if (p1 < p4 - 0.01f || p4 < p1 - 0.01f)
-					{
-						triangles[index++] = (y     * width) + x;
-						triangles[index++] = ((y+1) * width) + x;
-						triangles[index++] = ((y+1) * width) + x + 1;
+					triangles[index++] = (y     * width) + x;
+					triangles[index++] = ((y+1) * width) + x;
+					triangles[index++] = (y     * width) + x + 1;
 			
-						triangles[index++] = ((y+1) * width) + x + 1;
-						triangles[index++] = (y     * width) + x + 1;			
-						triangles[index++] = (y     * width) + x;
-					}
-					else
-					{
-						triangles[index++] = (y     * width) + x;
-						triangles[index++] = ((y+1) * width) + x;
-						triangles[index++] = (y     * width) + x + 1;
-			
-						triangles[index++] = ((y+1) * width) + x;
-						triangles[index++] = ((y+1) * width) + x + 1;
-						triangles[index++] = (y     * width) + x + 1;
-					}
+					triangles[index++] = ((y+1) * width) + x;
+					triangles[index++] = ((y+1) * width) + x + 1;
+					triangles[index++] = (y     * width) + x + 1;
 				}
 			}
 		}
@@ -188,18 +221,79 @@ public class Landscape : MonoBehaviour
 		mesh.triangles = triangles;
 			
 		// Auto-calculate vertex normals from the mesh
-		//mesh.normals = normals;
 		mesh.RecalculateNormals();
 		
 		MeshCollider collider = transform.GetComponent<MeshCollider>();
 		collider.sharedMesh = emptyMesh;	// Flush cached physics-friendly version of old mesh
 		collider.sharedMesh = mesh;
 		
+		// Pass 5 - populate surface features
+		Debug.Log(" Pass 5 - populate surface features");
+		
+		for (int i=0; i<10; i++)
+		{
+			Vector2 pos = Random.insideUnitCircle;
+			pos *= mapsize * 0.4f;
+			
+			float y = GetTerrainHeight( pos.x, pos.y );
+			Instantiate( treePrefab, new Vector3(pos.x, y, pos.y), Quaternion.identity );
+		}
+		
+		//
+		// Place the MegaTree on the highest point in the map
+		//
+		Vector3 megaPos;
+		megaPos.x = mapsize*highestx/(width-2.0f) - mapsize * 0.5f;
+		megaPos.z = mapsize*highesty/(height-2.0f) - mapsize * 0.5f;
+		megaPos.y = heightfield[highesty*(width+2)+highestx];
+		
+		megaTree = Instantiate( treePrefab, megaPos, Quaternion.identity ) as GameObject;
+		megaTree.transform.localScale.Set( 2.0f, 2.0f, 2.0f );
+		
 		Debug.Log("Finished mesh generation.");
 	}
 	
-	// Update is called once per frame
-	void Update () {
+	public GameObject GetMegaTree()
+	{
+		return megaTree;
+	}
 	
+	public bool IsCompleted()
+	{
+		if (megaTree.GetComponent<TreeLogic>().IsCompleted())
+			return true;
+	
+		return false;
+	}
+	
+	public void ColourTexture( Vector3 pos, float radius, Color col )
+	{
+		float px = texSize*uvFudge*(pos.x + mapsize * 0.5f)/mapsize;
+		float py = texSize*uvFudge*(pos.z + mapsize * 0.5f)/mapsize;
+		float pr = texSize*uvFudge*(radius)/mapsize;
+		
+		Color[] cols = texture.GetPixels( 0 );
+		
+		for (float i=px-pr; i<px+pr; i+=1.0f)
+		{
+			for (float j=py-pr; i<py+pr; j+=1.0f)
+			{
+				if ((i-px)*(i-px)+(j-py)*(j-py) < radius*radius)
+				{
+					//texture.SetPixel( (int)i, (int)j, col );
+					cols[ (int)j*texSize + (int)i ] = col;
+				}
+			}
+		}
+		
+		texture.SetPixels( cols, 0 );
+	}
+	
+	// Update is called once per frame
+	void Update ()
+	{
+		if ((framecount & 0x00000010) > 0)
+			texture.Apply( false );	// In case anything changed the texture
+		framecount++;
 	}
 }
