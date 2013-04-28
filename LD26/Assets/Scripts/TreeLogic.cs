@@ -54,7 +54,7 @@ public class TreeLogic : MonoBehaviour
 					Vector3 distToPlayer = transform.position - player.transform.position;
 					distToPlayer.y = 0.0f;
 					
-					if (distToPlayer.sqrMagnitude < 1.0f)
+					if (distToPlayer.sqrMagnitude < 2.0f*2.0f)
 					{
 						state = eTreeState.REVIVING;
 					}
@@ -66,15 +66,16 @@ public class TreeLogic : MonoBehaviour
 				reviveTimer += Time.deltaTime;
 				
 				float bloomRatio = reviveTimer/bloomDuration;
-				//bloomRatio = 1.0f - (bloomRatio*bloomRatio);
-				landscape.ColourTexture( transform.position, bloomRatio*bloomRadius, Color.green );
 				
-				if (!IsMegaTree())
+				if (!IsMegaTree())	// Shoot linear effect across landscape to MegaTree
 				{
 					Vector3 shootVec = megaTree.transform.position - transform.position;
 					UpdateShoot( transform.position + shootVec * bloomRatio );
 				}
-				
+
+				bloomRatio = 1.0f - (1.0f-bloomRatio)*(1.0f-bloomRatio);
+				landscape.ColourTexture( transform.position, bloomRatio*bloomRadius, new Color( 0.25f, 0.5f, 0.25f, 1.0f) );
+												
 				if (reviveTimer > bloomDuration)
 				{
 					state = eTreeState.COMPLETE;

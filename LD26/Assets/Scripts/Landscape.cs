@@ -284,14 +284,22 @@ public class Landscape : MonoBehaviour
 		}
 		
 		float pr = texSize*uvFudge*(radius)/mapsize;
+		Color tcol = col;
 		
 		for (float i=px-pr; i<px+pr; i+=1.0f)
 		{
 			for (float j=py-pr; j<py+pr; j+=1.0f)
 			{
-				if ((i-px)*(i-px)+(j-py)*(j-py) < pr*pr)
+				float r2 = (i-px)*(i-px)+(j-py)*(j-py);
+				if (r2 < pr*pr && (pr <= 4.0f || r2 > pr*0.75f*pr*0.75f))
 				{
-					texture.SetPixel( (int)i, (int)j, col );
+					float rand_unit = Random.value;
+					rand_unit *= 0.1f;
+					rand_unit += 0.9f;
+					tcol.r = col.r * rand_unit;
+					tcol.g = col.g * rand_unit;
+					tcol.b = col.b * rand_unit;
+					texture.SetPixel( (int)i, (int)j, tcol );
 				}
 			}
 		}
@@ -300,7 +308,7 @@ public class Landscape : MonoBehaviour
 	// Update is called once per frame
 	void Update ()
 	{
-		if ((framecount & 0x00000001) > 0)
+		//if ((framecount & 0x00000001) > 0)
 			texture.Apply( false );	// In case anything changed the texture
 		framecount++;
 	}
