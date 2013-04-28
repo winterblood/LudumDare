@@ -12,13 +12,16 @@ public class TreeLogic : MonoBehaviour
 	};
 	
 	public float bloomDuration = 3.0f;
-	public float bloomRadius = 7.0f;
+	public float bloomRadius = 12.0f;
 	
 	private Landscape landscape;
 	private GameObject player;
 	private GameObject megaTree;
-	private eTreeState state;
-	private float reviveTimer;
+	private eTreeState state = eTreeState.DEAD;
+	private float reviveTimer = 0.0f;
+	
+	private int megaTreeChildren = 0;
+	private int megaTreeChildrenAlive = 0;
 
 	
 	// Use this for initialization
@@ -39,12 +42,22 @@ public class TreeLogic : MonoBehaviour
 		{
 		case eTreeState.DEAD:
 			{
-				Vector3 distToPlayer = transform.position - player.transform.position;
-				distToPlayer.y = 0.0f;
-				
-				if (distToPlayer.sqrMagnitude < 1.0f)
+				if (megaTreeChildren>0)
 				{
-					state = eTreeState.REVIVING;
+					if (megaTreeChildrenAlive == megaTreeChildren)
+					{
+						state = eTreeState.REVIVING;
+					}
+				}
+				else
+				{
+					Vector3 distToPlayer = transform.position - player.transform.position;
+					distToPlayer.y = 0.0f;
+					
+					if (distToPlayer.sqrMagnitude < 1.0f)
+					{
+						state = eTreeState.REVIVING;
+					}
 				}
 			}
 			break;
@@ -53,15 +66,20 @@ public class TreeLogic : MonoBehaviour
 				reviveTimer += Time.deltaTime;
 				
 				float bloomRatio = reviveTimer/bloomDuration;
-				bloomRatio = 1.0f - (bloomRatio*bloomRatio);
+				//bloomRatio = 1.0f - (bloomRatio*bloomRatio);
 				landscape.ColourTexture( transform.position, bloomRatio*bloomRadius, Color.green );
 				
-				Vector3 shootVec = megaTree.transform.position - transform.position;
-				UpdateShoot( transform.position + shootVec * bloomRatio );
+				if (!IsMegaTree())
+				{
+					Vector3 shootVec = megaTree.transform.position - transform.position;
+					UpdateShoot( transform.position + shootVec * bloomRatio );
+				}
 				
 				if (reviveTimer > bloomDuration)
 				{
 					state = eTreeState.COMPLETE;
+					if (!IsMegaTree())
+						megaTree.GetComponent<TreeLogic>().NotifyMegaTree();
 				}
 			}
 			break;
@@ -72,9 +90,36 @@ public class TreeLogic : MonoBehaviour
 	
 	void UpdateShoot( Vector3 pos )
 	{
-		landscape.ColourTexture( transform.position, 0.6f, Color.green );
+		landscape.ColourTexture( pos, 0.0f, Color.green );
 		
 		// Also do particles etc.
+	}
+	
+	void OnGUI()
+	{
+		if (IsMegaTree())
+		{
+			GUI.Label( new Rect(10,10,200,20), "Trees "+megaTreeChildrenAlive+"/"+megaTreeChildren );
+		}
+	}
+	
+	public bool IsMegaTree()
+	{
+		return megaTreeChildren>0;
+	}
+	
+	public void SetMegaTree( int count )
+	{
+		float s = 3.0f;
+		transform.localScale.Set( s,s,s );
+		
+		megaTreeChildren = count;
+		megaTreeChildrenAlive = 0;
+	}
+	
+	public void NotifyMegaTree()
+	{
+		megaTreeChildrenAlive++;
 	}
 	
 	public bool IsCompleted()

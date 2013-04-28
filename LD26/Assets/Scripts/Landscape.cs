@@ -6,6 +6,7 @@ public class Landscape : MonoBehaviour
 	public float scale 				= 0.2f;
 	public float verticalStretch 	= 25.0f;
 	public float islandRadius 		= 60.0f;
+	public int treeCount	 		= 10;
 	public float uvFudge			= 0.975f;	// Awful hack to line texture alterations up with player, couldn't find the root error
 	
 	public GameObject treePrefab;
@@ -30,6 +31,8 @@ public class Landscape : MonoBehaviour
 	// Use this for initialization
 	void Start ()
 	{
+		Application.targetFrameRate = 30;
+	
 		perlin = new Perlin();
 		mapsize = islandRadius * 2.0f;
 		
@@ -230,7 +233,7 @@ public class Landscape : MonoBehaviour
 		// Pass 5 - populate surface features
 		Debug.Log(" Pass 5 - populate surface features");
 		
-		for (int i=0; i<10; i++)
+		for (int i=0; i<treeCount; i++)
 		{
 			Vector2 pos = Random.insideUnitCircle;
 			pos *= mapsize * 0.4f;
@@ -248,7 +251,8 @@ public class Landscape : MonoBehaviour
 		megaPos.y = heightfield[highesty*(width+2)+highestx];
 		
 		megaTree = Instantiate( treePrefab, megaPos, Quaternion.identity ) as GameObject;
-		megaTree.transform.localScale.Set( 2.0f, 2.0f, 2.0f );
+		megaTree.GetComponent<TreeLogic>().SetMegaTree( treeCount );
+		
 		
 		Debug.Log("Finished mesh generation.");
 	}
@@ -270,29 +274,33 @@ public class Landscape : MonoBehaviour
 	{
 		float px = texSize*uvFudge*(pos.x + mapsize * 0.5f)/mapsize;
 		float py = texSize*uvFudge*(pos.z + mapsize * 0.5f)/mapsize;
-		float pr = texSize*uvFudge*(radius)/mapsize;
 		
-		Color[] cols = texture.GetPixels( 0 );
+		if (radius == 0.0f)
+		{
+			Color tweakcol = texture.GetPixel( (int)px, (int)py );
+			tweakcol = Color.Lerp( tweakcol, col, Time.deltaTime );
+			texture.SetPixel( (int)px, (int)py, tweakcol );
+			return;
+		}
+		
+		float pr = texSize*uvFudge*(radius)/mapsize;
 		
 		for (float i=px-pr; i<px+pr; i+=1.0f)
 		{
-			for (float j=py-pr; i<py+pr; j+=1.0f)
+			for (float j=py-pr; j<py+pr; j+=1.0f)
 			{
-				if ((i-px)*(i-px)+(j-py)*(j-py) < radius*radius)
+				if ((i-px)*(i-px)+(j-py)*(j-py) < pr*pr)
 				{
-					//texture.SetPixel( (int)i, (int)j, col );
-					cols[ (int)j*texSize + (int)i ] = col;
+					texture.SetPixel( (int)i, (int)j, col );
 				}
 			}
 		}
-		
-		texture.SetPixels( cols, 0 );
 	}
 	
 	// Update is called once per frame
 	void Update ()
 	{
-		if ((framecount & 0x00000010) > 0)
+		if ((framecount & 0x00000001) > 0)
 			texture.Apply( false );	// In case anything changed the texture
 		framecount++;
 	}

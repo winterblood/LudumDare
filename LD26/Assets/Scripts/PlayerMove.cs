@@ -32,7 +32,8 @@ public class PlayerMove : MonoBehaviour
 	public float chaseCamGroundAvoid = 1.0f;
 	private Vector3 chaseCamPos;
 	private Vector3 chaseCamVel;
-	private float currentCamTerrainY;	
+	private float currentCamTerrainY;
+	private GameObject lookTarget;
 
 	// Interaction with world
 	private Landscape landscape;
@@ -49,6 +50,9 @@ public class PlayerMove : MonoBehaviour
 		chaseCamPos.y += chaseCamTgtHeight;
 		chaseCamVel = Vector3.zero;
 		lookVelocity = Vector3.zero;
+		lookTarget = new GameObject();
+		lookTarget.transform.position = transform.position;
+		
 		
 		GameObject landscapeObj = GameObject.Find( "Landscape" );
 		landscape = landscapeObj.GetComponent<Landscape>();
@@ -97,7 +101,7 @@ public class PlayerMove : MonoBehaviour
 		inputJump = Input.GetButton("Jump");
 		if (inputJump && IsOnGround())
 		{
-			Debug.Log("LAUNCH");
+			//Debug.Log("LAUNCH");
 			jumpTimer = playerJumpMinTime;		// Force minimum float time when launching from ground
 		}
 
@@ -115,7 +119,7 @@ public class PlayerMove : MonoBehaviour
 		lookInput.x = -Input.GetAxis("LookH");
 		lookInput.y = -Input.GetAxis("LookV");
 		lookInput.z = 0.0f;
-		Debug.DrawRay(transform.position, lookInput * 10, Color.cyan);
+		//Debug.DrawRay(transform.position, lookInput * 10, Color.cyan);
 	}
 	
 	void ApplyInput()
@@ -149,17 +153,20 @@ public class PlayerMove : MonoBehaviour
 	void OnCollisionStay( Collision collisionInfo )
 	{
 		timeSinceOnGround = 0.0f;
-		
+		/*
         foreach (ContactPoint contact in collisionInfo.contacts)
         {
             Debug.DrawRay(contact.point, contact.normal * 10, Color.red);
         }
+        */
     }
 	
 	void ProcessChaseCam()
 	{
 		currentTerrainY = landscape.GetTerrainHeight( transform.position.x, transform.position.z );		// player
 		currentCamTerrainY = landscape.GetTerrainHeight( chaseCamPos.x, chaseCamPos.z );				// camera
+		
+		float playerHeightOffGround = transform.position.y - currentTerrainY;
 	
 		Vector3 vecToPlayer = transform.position - chaseCamPos;
 		Vector3 vecToPlayerXZ = vecToPlayer;
@@ -169,8 +176,12 @@ public class PlayerMove : MonoBehaviour
 		float dist = vecToPlayer.magnitude;
 		vecToPlayer /= dist;
 		
+		float currentTargetHeight = chaseCamTgtHeight;
+		if (worldInput.y > 0.0f || playerHeightOffGround > 2.0f)
+			currentTargetHeight *= 3.0f;
+		
 		chaseCamVel = vecToPlayer * (dist-chaseCamTgtDistance);
-		chaseCamVel.y += chaseCamTgtHeight - yOffset;
+		chaseCamVel.y += currentTargetHeight - yOffset;
 		
 		float xzDist = vecToPlayerXZ.magnitude;
 		if (xzDist < 1.0f)
@@ -179,11 +190,17 @@ public class PlayerMove : MonoBehaviour
 			chaseCamVel += vecToPlayerXZ * -(1.0f - xzDist);
 		}
 		
+		//
+		// Manual look around
+		//
 		lookVelocity = Vector3.MoveTowards( lookVelocity, lookInput, Time.deltaTime * chaseCamLookSeek );
 		chaseCamVel += Camera.main.transform.right * lookVelocity.x * -chaseCamYawSpeed;
 		if (xzDist > 1.0f)
 			chaseCamVel += Camera.main.transform.up * lookVelocity.y * chaseCamPitchSpeed;
-			
+		
+		//
+		// Keep camera above terrain
+		//
 		float distUnderSafeY = (currentCamTerrainY + chaseCamGroundAvoid) - chaseCamPos.y;
 		if (distUnderSafeY > 0.0f)
 		{
@@ -199,15 +216,16 @@ public class PlayerMove : MonoBehaviour
 			chaseCamPos.y = currentCamTerrainY + 0.5f;
 		
 		// Snap main cam to chase cam pos
+		lookTarget.transform.position = Vector3.MoveTowards( lookTarget.transform.position, transform.position + transform.forward, 20.0f * Time.deltaTime );
 		Camera.main.transform.position = chaseCamPos;
-		Camera.main.transform.LookAt( transform );
+		Camera.main.transform.LookAt( lookTarget.transform );
 	}
 	
 	void QuickenWorld()
 	{
 		if (transform.position.y - currentTerrainY < 0.9f)
 		{
-			landscape.ColourTexture( transform.position, 0.5f, Color.green );
+			landscape.ColourTexture( transform.position, 0.0f, Color.green );
 		}
 	}
 	
