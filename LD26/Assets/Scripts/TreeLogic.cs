@@ -13,6 +13,7 @@ public class TreeLogic : MonoBehaviour
 	
 	public float bloomDuration = 3.0f;
 	public float bloomRadius = 12.0f;
+	public bool testCamera = false;
 	
 	private Landscape landscape;
 	private GameObject player;
@@ -43,6 +44,16 @@ public class TreeLogic : MonoBehaviour
 	// Update is called once per frame
 	void Update ()
 	{
+		if (IsMegaTree() && testCamera)
+		{
+			cutawayCam.look = Vector3.up * 30.0f;
+			cutawayCam.pos = Vector3.up * 130.0f + Vector3.forward * 100.0f;
+			cutawayCam.fov = 30.0f;
+			cutawayCam.guid = 666;
+			cutawayCam.priority = 100;
+			cameraBlender.RequestCamera( cutawayCam );
+		}
+	
 		switch (state)
 		{
 		case eTreeState.DEAD:

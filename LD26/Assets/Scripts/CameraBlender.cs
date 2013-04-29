@@ -30,6 +30,7 @@ public class CameraBlender : MonoBehaviour
 	// Use this for initialization
 	void Start ()
 	{
+		Debug.Log("Created CameraBlends");
 		currentCam = new CameraBlend();
 		targetCam = new CameraBlend();
 		oldCam = new CameraBlend();
@@ -46,14 +47,14 @@ public class CameraBlender : MonoBehaviour
 				blendInWeight = -1.0f;
 		}
 	
-		Camera.main.transform.position = currentCam.pos;
-		Camera.main.transform.LookAt( currentCam.look );
-		Camera.main.fov = currentCam.fov;
+		//Camera.main.transform.position = currentCam.pos;
+		//Camera.main.transform.LookAt( currentCam.look );
+		//Camera.main.fov = currentCam.fov;
 	}
 	
 	public bool RequestCamera( CameraBlend cam )
 	{
-		if (cam.priority > 20000)
+		if (currentCam.priority > 20000)
 			return false;
 	
 		if (cam.priority < currentCam.priority)
@@ -63,8 +64,9 @@ public class CameraBlender : MonoBehaviour
 		
 		if (cam.guid != targetCam.guid)		// Change of camera!
 		{
-			targetCam = cam;
-			oldCam = currentCam;
+			Debug.Log( "NEW CAMERA! guid = "+cam.guid );
+			CameraBlend.Blend( targetCam, targetCam, cam, 1.0f );
+			CameraBlend.Blend( oldCam, oldCam, currentCam, 1.0f );
 			blendInWeight = 0.0f;
 			
 		}

@@ -82,6 +82,31 @@ public class JoustAI : MonoBehaviour
 		
 			currentAimPos = player.transform.position;
 			Vector3 toPlayer = currentAimPos - transform.position;
+			
+			//
+			// JOUST COLLISION
+			//
+			Vector3 xzToPlayer = toPlayer;
+			xzToPlayer.y = 0.0f;
+			if (xzToPlayer.sqrMagnitude < 2.0f*2.0f)
+			{
+				xzToPlayer.Normalize();
+				xzToPlayer *= 20.0f;
+				if (toPlayer.y < 0.0f)
+				{
+					player.GetComponent<PlayerMove>().Impact( xzToPlayer );
+				}
+				else
+				{
+					worldVelocity += -xzToPlayer;
+					state = eJoustState.AIM_FOR_MEGATREE;
+					break;
+				}
+			}
+			
+			//
+			// Launch at player under the right conditions
+			//
 			if (IsOnGround() && toPlayer.y > 0.0f)
 			{
 				Debug.Log("AIM_FOR_PLAYER -> AIM_FOR_UPHILL");
@@ -100,6 +125,7 @@ public class JoustAI : MonoBehaviour
 			}
 			
 			currentAimPos -= moving * inertiaCompensateWeight;
+			
 			break;
 			
 		case eJoustState.AIM_FOR_MEGATREE:

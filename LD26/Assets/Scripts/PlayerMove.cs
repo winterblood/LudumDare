@@ -76,6 +76,11 @@ public class PlayerMove : MonoBehaviour
 		chaseCamPacket = new CameraBlend();
 	}
 	
+	public void Impact( Vector3 direction )
+	{
+		worldVelocity += direction;
+	}
+	
 	bool IsOnGround()
 	{
 		if (jumpTimer > 0.0f)
@@ -280,8 +285,8 @@ public class PlayerMove : MonoBehaviour
 		chaseCamPacket.priority = 99;
 		cameraBlender.RequestCamera( chaseCamPacket );
 		
-		//Camera.main.transform.position = chaseCamPos;
-		//Camera.main.transform.LookAt( chaseCamLook );
+		Camera.main.transform.position = chaseCamPos;
+		Camera.main.transform.LookAt( chaseCamLook );
 	}
 	
 	void QuickenWorld()
