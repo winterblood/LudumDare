@@ -33,6 +33,7 @@ public class PlayerMove : MonoBehaviour
 	public float chaseCamLookSeek;
 	public float chaseCamManualLookSeek;
 	public float chaseCamGroundAvoid = 1.0f;
+	public float chaseCamJumpLiftScale = 2.0f;
 	public bool emergencyCameraPos = false;
 	public bool emergencyCameraLook = false;
 	public bool enableGroundUnembed = true;
@@ -41,6 +42,7 @@ public class PlayerMove : MonoBehaviour
 	private Vector3 chaseCamVel;
 	private Vector3 chaseCamLook;
 	private float currentCamTerrainY;
+	private CameraBlend chaseCamPacket;
 	
 	// Animation
 	private GameObject figure;
@@ -48,6 +50,7 @@ public class PlayerMove : MonoBehaviour
 	// Interaction with world
 	private Landscape landscape;
 	private float currentTerrainY;
+	private CameraBlender cameraBlender;
 	
 	// Use this for initialization
 	void Start ()
@@ -68,6 +71,9 @@ public class PlayerMove : MonoBehaviour
 		landscape = landscapeObj.GetComponent<Landscape>();
 		
 		figure = transform.FindChild("figure").gameObject;
+		
+		cameraBlender = Camera.main.gameObject.GetComponent<CameraBlender>();
+		chaseCamPacket = new CameraBlend();
 	}
 	
 	bool IsOnGround()
@@ -124,6 +130,8 @@ public class PlayerMove : MonoBehaviour
 			if (jumpTimer > 0.0f)
 				jumpTimer -= Time.deltaTime;
 		}
+		
+		Debug.DrawRay( transform.position + Vector3.up, worldInput, Color.yellow );
 		
 		//
 		// LOOK AROUND
@@ -209,8 +217,8 @@ public class PlayerMove : MonoBehaviour
 		vecToPlayer /= dist;
 		
 		float currentTargetHeight = chaseCamTgtHeight;
-		if (worldInput.y > 0.0f || playerHeightOffGround > 2.0f)
-			currentTargetHeight *= 3.0f;
+		if (playerHeightOffGround > 2.0f)
+			currentTargetHeight += (playerHeightOffGround-2.0f) * chaseCamJumpLiftScale;
 		
 		chaseCamVel = vecToPlayer * (dist-chaseCamTgtDistance);
 		chaseCamVel.y += currentTargetHeight - yOffset;
@@ -263,8 +271,17 @@ public class PlayerMove : MonoBehaviour
 		{	
 			chaseCamLook.y = currentTerrainY;
 		}
-		Camera.main.transform.position = chaseCamPos;
-		Camera.main.transform.LookAt( chaseCamLook );
+		
+		
+		chaseCamPacket.pos = chaseCamPos;
+		chaseCamPacket.look = chaseCamLook;
+		chaseCamPacket.fov = 60.0f;
+		chaseCamPacket.guid = 12345;
+		chaseCamPacket.priority = 99;
+		cameraBlender.RequestCamera( chaseCamPacket );
+		
+		//Camera.main.transform.position = chaseCamPos;
+		//Camera.main.transform.LookAt( chaseCamLook );
 	}
 	
 	void QuickenWorld()

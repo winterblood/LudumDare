@@ -46,6 +46,7 @@
   <ItemGroup>
      <Compile Include="Assets\Scripts\CameraBlender.cs" />
      <Compile Include="Assets\Scripts\FollowCamera.cs" />
+     <Compile Include="Assets\Scripts\JoustAI.cs" />
      <Compile Include="Assets\Scripts\Landscape.cs" />
      <Compile Include="Assets\Scripts\Perlin.cs" />
      <Compile Include="Assets\Scripts\PlayerMove.cs" />

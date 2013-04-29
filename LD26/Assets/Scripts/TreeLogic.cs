@@ -17,6 +17,8 @@ public class TreeLogic : MonoBehaviour
 	private Landscape landscape;
 	private GameObject player;
 	private GameObject megaTree;
+	private CameraBlender cameraBlender;
+	private CameraBlend cutawayCam;
 	private eTreeState state = eTreeState.DEAD;
 	private float reviveTimer = 0.0f;
 	
@@ -33,6 +35,9 @@ public class TreeLogic : MonoBehaviour
 		megaTree = landscape.GetMegaTree();
 		
 		player = GameObject.Find( "Player" );
+		
+		cameraBlender = Camera.main.gameObject.GetComponent<CameraBlender>();
+		cutawayCam = new CameraBlend();
 	}
 	
 	// Update is called once per frame
@@ -71,6 +76,15 @@ public class TreeLogic : MonoBehaviour
 				{
 					Vector3 shootVec = megaTree.transform.position - transform.position;
 					UpdateShoot( transform.position + shootVec * bloomRatio );
+					
+					cutawayCam.look = transform.position + shootVec * 0.75f;
+					cutawayCam.pos = transform.position - shootVec * 0.5f;
+					cutawayCam.pos.y = transform.position.y + 5.0f;
+					cutawayCam.pos += Vector3.forward;
+					cutawayCam.fov = 90.0f;
+					cutawayCam.guid = 54321;
+					cutawayCam.priority = 100;
+					cameraBlender.RequestCamera( cutawayCam );
 				}
 
 				bloomRatio = 1.0f - (1.0f-bloomRatio)*(1.0f-bloomRatio);

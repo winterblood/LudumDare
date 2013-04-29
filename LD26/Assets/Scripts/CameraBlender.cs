@@ -6,7 +6,7 @@ public class CameraBlend
 {
 	public Vector3 pos;
 	public Vector3 look;
-	public float fov;
+	public float fov = 60.0f;
 	public int priority;
 	public int guid;
 	
@@ -22,7 +22,6 @@ public class CameraBlend
 
 public class CameraBlender : MonoBehaviour
 {
-
 	private CameraBlend currentCam;
 	private CameraBlend targetCam;
 	private CameraBlend oldCam;
@@ -47,15 +46,16 @@ public class CameraBlender : MonoBehaviour
 				blendInWeight = -1.0f;
 		}
 	
-	/*
 		Camera.main.transform.position = currentCam.pos;
 		Camera.main.transform.LookAt( currentCam.look );
 		Camera.main.fov = currentCam.fov;
-	*/
 	}
 	
-	bool RequestCamera( CameraBlend cam )
+	public bool RequestCamera( CameraBlend cam )
 	{
+		if (cam.priority > 20000)
+			return false;
+	
 		if (cam.priority < currentCam.priority)
 		{
 			return false;
