@@ -18,6 +18,7 @@ public class PlayerMove : MonoBehaviour
 	public float playerJumpMaxTime;
 	public float playerTopSpeed;
 	public float playerGravity = -10.0f;
+	public float playerMaxRotSpeed = 20.0f;
 	private Vector3 worldVelocity;
 	private Vector3 lookVelocity;
 	private float jumpTimer;
@@ -30,6 +31,7 @@ public class PlayerMove : MonoBehaviour
 	public float chaseCamYawSpeed;
 	public float chaseCamPitchSpeed;
 	public float chaseCamLookSeek;
+	public float chaseCamManualLookSeek;
 	public float chaseCamGroundAvoid = 1.0f;
 	public bool emergencyCameraPos = false;
 	public bool emergencyCameraLook = false;
@@ -39,7 +41,10 @@ public class PlayerMove : MonoBehaviour
 	private Vector3 chaseCamVel;
 	private Vector3 chaseCamLook;
 	private float currentCamTerrainY;
-
+	
+	// Animation
+	private GameObject figure;
+	
 	// Interaction with world
 	private Landscape landscape;
 	private float currentTerrainY;
@@ -61,6 +66,8 @@ public class PlayerMove : MonoBehaviour
 		
 		GameObject landscapeObj = GameObject.Find( "Landscape" );
 		landscape = landscapeObj.GetComponent<Landscape>();
+		
+		figure = transform.FindChild("figure").gameObject;
 	}
 	
 	bool IsOnGround()
@@ -130,8 +137,6 @@ public class PlayerMove : MonoBehaviour
 	void ApplyInput()
 	{	
 		float xzScale = 1.0f;	
-		//Rigidbody body = gameObject.GetComponent<Rigidbody>();
-		//Vector3 xzVel = body.GetPointVelocity( transform.position );
 		Vector3 xzVel = worldVelocity;
 		xzVel.y = 0.0f;	
 		if (xzVel.sqrMagnitude > playerTopSpeed*playerTopSpeed)
@@ -141,6 +146,7 @@ public class PlayerMove : MonoBehaviour
 		force.x *= inputForce * xzScale;
 		force.z *= inputForce * xzScale;
 		force.y *= jumpForce;
+		force.y += playerGravity;
 		
 		Vector3 xzInput = worldInput;
 		xzInput.y = 0.0f;
@@ -162,35 +168,35 @@ public class PlayerMove : MonoBehaviour
 				worldVelocity.y = 0.0f;
 		}	
 		
-		force.y += playerGravity;
-		
 		worldVelocity += force * Time.deltaTime;
 		
 		newpos += worldVelocity * Time.deltaTime;
-		Vector3 facing = worldInput;
-		facing.y = 0.0f;
-		facing += newpos;
 		transform.position = newpos;
-		transform.LookAt( facing );
-		//body.AddForce( force );
+		if ( xzInput.sqrMagnitude > 0.2f*0.2f )
+		{
+			Vector3 facing = worldInput;
+			facing.y = 0.0f;
+			Quaternion faceQuat = Quaternion.LookRotation( facing );
+			facing += newpos;
+			transform.rotation = Quaternion.RotateTowards( transform.rotation, faceQuat, playerMaxRotSpeed );
+		}
 	}
 	
-	void OnCollisionStay( Collision collisionInfo )
+	void UpdateAnims()
 	{
-		timeSinceOnGround = 0.0f;
-		/*
-        foreach (ContactPoint contact in collisionInfo.contacts)
-        {
-            Debug.DrawRay(contact.point, contact.normal * 10, Color.red);
-        }
-        */
-    }
+		if (inputJump)
+			figure.animation.CrossFade("JumpUp", 0.2f, PlayMode.StopAll);
+		else if (worldInput.sqrMagnitude > 0.2f*0.2f)
+			figure.animation.CrossFade ("Walk");
+		else
+			figure.animation.CrossFade ("Idle");
+	}
 	
 	void ProcessChaseCam()
 	{
 		float playerHeightOffGround = transform.position.y - currentTerrainY;
 	
-		chaseCamLook = Vector3.MoveTowards( chaseCamLook, transform.position + transform.forward, 20.0f * Time.deltaTime );
+		chaseCamLook = Vector3.MoveTowards( chaseCamLook, transform.position + transform.forward, chaseCamLookSeek * Time.deltaTime );
 		//chaseCamLook = transform.position + transform.forward;
 		Debug.DrawLine( chaseCamLook, Camera.main.transform.position + Camera.main.transform.right * 0.1f, Color.red );
 	
@@ -213,7 +219,7 @@ public class PlayerMove : MonoBehaviour
 		if (xzDist < 1.0f)
 		{
 			vecToPlayerXZ /= xzDist;
-			chaseCamVel += vecToPlayerXZ * -(1.0f - xzDist);
+			chaseCamPos += vecToPlayerXZ * -(1.0f - xzDist);
 		}
 		
 		//
@@ -221,7 +227,7 @@ public class PlayerMove : MonoBehaviour
 		//
 		if (enableManualLook)
 		{
-			lookVelocity = Vector3.MoveTowards( lookVelocity, lookInput, Time.deltaTime * chaseCamLookSeek );
+			lookVelocity = Vector3.MoveTowards( lookVelocity, lookInput, Time.deltaTime * chaseCamManualLookSeek );
 			chaseCamVel += Camera.main.transform.right * lookVelocity.x * -chaseCamYawSpeed;
 			if (xzDist > 1.0f)
 				chaseCamVel += Camera.main.transform.up * lookVelocity.y * chaseCamPitchSpeed;
@@ -263,9 +269,10 @@ public class PlayerMove : MonoBehaviour
 	
 	void QuickenWorld()
 	{
-		if (transform.position.y - currentTerrainY < 0.9f)
+		if (transform.position.y - currentTerrainY < 1.5f)
 		{
-			landscape.ColourTexture( transform.position, 0.0f, Color.green );
+			Color col = new Color( 0.25f, 0.9f, 0.25f, 0.75f );
+			landscape.ColourTexture( transform.position, 0.0f, col );
 		}
 	}
 	
@@ -277,7 +284,8 @@ public class PlayerMove : MonoBehaviour
 		
 		HandleInput();
 		ApplyInput();
-		ProcessChaseCam();		
+		ProcessChaseCam();
+		UpdateAnims();		
 		QuickenWorld();
 		
 		timeSinceOnGround += Time.deltaTime;

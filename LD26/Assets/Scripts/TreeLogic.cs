@@ -74,7 +74,7 @@ public class TreeLogic : MonoBehaviour
 				}
 
 				bloomRatio = 1.0f - (1.0f-bloomRatio)*(1.0f-bloomRatio);
-				landscape.ColourTexture( transform.position, bloomRatio*bloomRadius, new Color( 0.25f, 0.5f, 0.25f, 1.0f) );
+				landscape.ColourTexture( transform.position, bloomRatio*bloomRadius, new Color( 0.25f, 0.5f, 0.25f, 0.25f) );
 												
 				if (reviveTimer > bloomDuration)
 				{

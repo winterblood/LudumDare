@@ -278,7 +278,7 @@ public class Landscape : MonoBehaviour
 		if (radius == 0.0f)
 		{
 			Color tweakcol = texture.GetPixel( (int)px, (int)py );
-			tweakcol = Color.Lerp( tweakcol, col, Time.deltaTime );
+			tweakcol = Color.Lerp( tweakcol, col, col.a*30.0f*Time.deltaTime );
 			texture.SetPixel( (int)px, (int)py, tweakcol );
 			return;
 		}
@@ -291,7 +291,7 @@ public class Landscape : MonoBehaviour
 			for (float j=py-pr; j<py+pr; j+=1.0f)
 			{
 				float r2 = (i-px)*(i-px)+(j-py)*(j-py);
-				if (r2 < pr*pr && (pr <= 4.0f || r2 > pr*0.75f*pr*0.75f))
+				if (r2 < pr*pr && (pr <= 4.0f || r2 > (pr-1.5f)*(pr-1.5f)))
 				{
 					float rand_unit = Random.value;
 					rand_unit *= 0.1f;
@@ -299,6 +299,10 @@ public class Landscape : MonoBehaviour
 					tcol.r = col.r * rand_unit;
 					tcol.g = col.g * rand_unit;
 					tcol.b = col.b * rand_unit;
+					
+					Color tweakcol = texture.GetPixel( (int)i, (int)j );
+					tcol = Color.Lerp( tweakcol, tcol, col.a*30.0f*Time.deltaTime );
+					
 					texture.SetPixel( (int)i, (int)j, tcol );
 				}
 			}
