@@ -51,7 +51,7 @@ public class TreeLogic : MonoBehaviour
 			cutawayCam.fov = 30.0f;
 			cutawayCam.guid = 666;
 			cutawayCam.priority = 100;
-			cameraBlender.RequestCamera( cutawayCam );
+			cameraBlender.RequestCamera( ref cutawayCam );
 		}
 	
 		switch (state)
@@ -95,7 +95,7 @@ public class TreeLogic : MonoBehaviour
 					cutawayCam.fov = 90.0f;
 					cutawayCam.guid = 54321;
 					cutawayCam.priority = 100;
-					cameraBlender.RequestCamera( cutawayCam );
+					cameraBlender.RequestCamera( ref cutawayCam );
 				}
 
 				bloomRatio = 1.0f - (1.0f-bloomRatio)*(1.0f-bloomRatio);

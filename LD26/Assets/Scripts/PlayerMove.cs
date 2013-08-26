@@ -283,10 +283,10 @@ public class PlayerMove : MonoBehaviour
 		chaseCamPacket.fov = 60.0f;
 		chaseCamPacket.guid = 12345;
 		chaseCamPacket.priority = 99;
-		cameraBlender.RequestCamera( chaseCamPacket );
+		cameraBlender.RequestCamera( ref chaseCamPacket );
 		
-		Camera.main.transform.position = chaseCamPos;
-		Camera.main.transform.LookAt( chaseCamLook );
+		//Camera.main.transform.position = chaseCamPos;
+		//Camera.main.transform.LookAt( chaseCamLook );
 	}
 	
 	void QuickenWorld()

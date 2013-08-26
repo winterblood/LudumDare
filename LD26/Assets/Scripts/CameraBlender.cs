@@ -10,7 +10,7 @@ public class CameraBlend
 	public int priority;
 	public int guid;
 	
-	static public void Blend( CameraBlend dest, CameraBlend camFrom, CameraBlend camTo, float t )
+	static public void Blend( ref CameraBlend dest, ref CameraBlend camFrom, ref CameraBlend camTo, float t )
 	{
 		dest.pos 	= Vector3.Lerp( camFrom.pos, camTo.pos, t );
 		dest.look 	= Vector3.Lerp( camFrom.look, camTo.look, t );
@@ -39,20 +39,33 @@ public class CameraBlender : MonoBehaviour
 	// Update is called once per frame
 	void Update ()
 	{
+		if (currentCam.guid != targetCam.guid)		// Change of camera!
+		{
+			Debug.Log( "NEW CAMERA! guid = "+targetCam.guid );
+			CameraBlend.Blend( ref oldCam, ref oldCam, ref currentCam, 1.0f );	// Set oldcam to currentcam
+			blendInWeight = 0.0f;
+		}
+	
 		if (blendInWeight >= 0.0f)
 		{
-			CameraBlend.Blend( currentCam, oldCam, targetCam, blendInWeight );
+			CameraBlend.Blend( ref currentCam, ref oldCam, ref targetCam, blendInWeight );
 			blendInWeight += Time.deltaTime;
 			if (blendInWeight >= 1.0f)
 				blendInWeight = -1.0f;
 		}
+		else
+		{
+			CameraBlend.Blend( ref currentCam, ref currentCam, ref targetCam, 1.0f );	// Set currentcam to targetcam
+		}
 	
-		//Camera.main.transform.position = currentCam.pos;
-		//Camera.main.transform.LookAt( currentCam.look );
-		//Camera.main.fov = currentCam.fov;
+		Camera.main.transform.position = currentCam.pos;
+		Camera.main.transform.LookAt( currentCam.look );
+		Camera.main.fov = currentCam.fov;
+		
+		currentCam.priority = 0;	// Ready for next frame's priority mix
 	}
 	
-	public bool RequestCamera( CameraBlend cam )
+	public bool RequestCamera( ref CameraBlend cam )
 	{
 		if (currentCam.priority > 20000)
 			return false;
@@ -62,14 +75,8 @@ public class CameraBlender : MonoBehaviour
 			return false;
 		}
 		
-		if (cam.guid != targetCam.guid)		// Change of camera!
-		{
-			Debug.Log( "NEW CAMERA! guid = "+cam.guid );
-			CameraBlend.Blend( targetCam, targetCam, cam, 1.0f );
-			CameraBlend.Blend( oldCam, oldCam, currentCam, 1.0f );
-			blendInWeight = 0.0f;
-			
-		}
+		CameraBlend.Blend( ref targetCam, ref targetCam, ref cam, 1.0f );	// Set targetcam to cam
+		
 		return true;
 	}
 	
