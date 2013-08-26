@@ -92,7 +92,18 @@ public class TimeJump : MonoBehaviour
 			}
 		}
 	}
-	
+
+	void ZeroMapTimes( Cell[,] map )
+	{
+		for (int x=0; x<gridSize; x++)
+		{
+			for (int y=0; y<gridSize; y++)
+			{
+				map[x,y].playerTime = 0;
+			}
+		}
+	}	
+			
 									
 	// Use this for initialization
 	void Awake ()
@@ -218,7 +229,7 @@ public class TimeJump : MonoBehaviour
 		if (turnProgress >= 0.0f)
 		{
 			Time.timeScale = 1.0f;
-			turnProgress = Time.realtimeSinceStartup - turnStartTime;
+			turnProgress = (Time.realtimeSinceStartup - turnStartTime) * 2.0f;
 			if (turnProgress>1.0f)
 			{
 				turnProgress = -1.0f;
@@ -342,6 +353,9 @@ public class TimeJump : MonoBehaviour
 			mapFuture[fromx,fromy].type 		= eCellType.empty;
 			mapFuture[fromx,fromy].playerTime 	= -1;
 			
+			mapPast[fromx,fromy].playerTime		= (((tox-fromx)+2)<<4) + ((toy-fromy)+2);	// encode move direction
+			Debug.Log("Encoded move: x=" + (tox-fromx) + " y=" + (toy-fromy) + " as " + mapPast[fromx,fromy].playerTime);
+			
 			return true;
 		}
 		if (mapFuture[fromx,fromy].type == eCellType.player && mapFuture[tox,toy].type == eCellType.block)
@@ -356,7 +370,9 @@ public class TimeJump : MonoBehaviour
 				// Leave previous cell empty
 				mapFuture[fromx,fromy].type 		= eCellType.empty;
 				mapFuture[fromx,fromy].playerTime 	= -1;
-				
+
+				mapPast[fromx,fromy].playerTime		= (((tox-fromx)+2)<<4) + ((toy-fromy)+2);	// encode move direction
+						
 				return true;
 			}
 		}
@@ -370,6 +386,7 @@ public class TimeJump : MonoBehaviour
 	{
 		CopyMap( map, mapFuture );	// Create future state identical to current state
 		CopyMap( map, mapPast );	// Create copy of current state for next frame to compare to
+		ZeroMapTimes( mapPast );
 	
 		for (int x=0; x<gridSize; x++)
 		{
@@ -431,8 +448,8 @@ public class TimeJump : MonoBehaviour
 			
 		default:
 			DrawGame();
-			GUI.Box( new Rect(Screen.width-120, 20, 100, 50), "Time left = " + (10-globalTime) );
-			GUI.Box( new Rect(20, 20, 200, 70), "playerTime = " + playerTime + "\nglobalTime = " + globalTime + "\n\nturnProgress = " + turnProgress);
+			//GUI.Box( new Rect(Screen.width-120, 20, 100, 50), "Time left = " + (10-globalTime) );
+			//GUI.Box( new Rect(20, 20, 200, 70), "playerTime = " + playerTime + "\nglobalTime = " + globalTime + "\n\nturnProgress = " + turnProgress);
 			break;
 			
 		}
@@ -452,7 +469,20 @@ public class TimeJump : MonoBehaviour
 		{
 			for (int y=0; y<gridSize; y++)
 			{
-				switch (map[x,y].type)
+				eCellType type = map[x,y].type;
+				int xdir = 0;
+				int ydir = 0;
+				if (turnProgress >= 0.0f)
+				{
+					type = mapPast[x,y].type;
+					if (mapPast[x,y].playerTime > 0)
+					{
+						xdir = ((mapPast[x,y].playerTime & ~0xf) >> 4)-2;
+						//Debug.Log( "xdir="+xdir );
+						ydir = (mapPast[x,y].playerTime & 0xF)-2;
+					}
+				}
+				switch (type)
 				{
 				case eCellType.empty:	tex = null;
 					break;
@@ -470,7 +500,12 @@ public class TimeJump : MonoBehaviour
 				}
 				
 				if (tex)
-					GUI.DrawTexture( new Rect(x*cellSize+originx, y*cellSize+originy, cellSize, cellSize), tex );
+				{
+					float animx = (float)xdir*cellSize*turnProgress;
+					float animy = (float)ydir*cellSize*turnProgress;
+					GUI.DrawTexture( new Rect(x*cellSize+originx+animx, y*cellSize+originy+animy, cellSize, cellSize), tex );
+					
+				}
 			}
 		}
 	}
