@@ -7,7 +7,8 @@ public enum eCellType
 	wall,
 	block,
 	player,
-	exit
+	exit,
+	key
 }
 
 public class Cell
@@ -23,7 +24,8 @@ public class TimeJump : MonoBehaviour
 		title,
 		play,
 		win,
-		lose
+		lose,
+		finished
 	}
 	
 	enum eAction
@@ -46,15 +48,27 @@ public class TimeJump : MonoBehaviour
 	public Texture		texPlayerPast;
 	public Texture		texBlock;
 	public Texture		texExit;
+	public Texture		texExitLocked;
 	public Texture		texBackground;
+	public Texture		texKey;
 	public Material		digiNumerals;
-	public int				startLevel = 2;
+	public AudioClip	sfxWin;
+	public AudioClip	sfxLose;
+	public AudioClip	sfxKey;
+	public AudioClip	sfxPush;
+	public AudioClip	sfxTimeJump;
+	public AudioClip	sfxInvalid;
+	public AudioClip	sfxAccept;
+	public int			startLevel = 0;
+	public GUIStyle		style;
 	
 	private int 			globalTime = 0;
 	private int 			playerTime = 0;
 	private float			turnProgress = -1.0f;
 	private float			turnStartTime = 0.0f;
 	private bool			waitForRelease = false;
+	private bool			hasKey = false;
+	private bool			lastLevel = false;
 	private int				level = 0;
 	
 	// Game loop
@@ -124,6 +138,8 @@ public class TimeJump : MonoBehaviour
 	
 	void InitLevel()
 	{
+		hasKey = false;
+	
 		for (int x=0; x<gridSize; x++)
 		{
 			for (int y=0; y<gridSize; y++)
@@ -144,6 +160,8 @@ public class TimeJump : MonoBehaviour
 			map[1,1].type = eCellType.player;
 			map[1,1].playerTime = 0;
 	
+			map[4,4].type = eCellType.key;
+	
 			// Spawn exit
 			map[6,6].type = eCellType.exit;
 			break;
@@ -162,6 +180,8 @@ public class TimeJump : MonoBehaviour
 			map[4,5].type = eCellType.wall;	
 			map[5,5].type = eCellType.wall;	
 			map[6,5].type = eCellType.wall;	
+			
+			map[4,4].type = eCellType.key;
 	
 			// Spawn exit
 			map[6,6].type = eCellType.exit;
@@ -185,36 +205,65 @@ public class TimeJump : MonoBehaviour
 			map[6,5].type = eCellType.wall;	
 	
 			map[3,1].type = eCellType.block;
-			map[3,6].type = eCellType.block;	
+			map[3,6].type = eCellType.block;
+			
+			map[4,4].type = eCellType.key;	
 	
 			// Spawn exit
 			map[6,6].type = eCellType.exit;
 			break;
 
-		case 3:		// Show temporal crates
+		case 3:		// Retrace your steps
 			// Spawn player
 			map[1,1].type = eCellType.player;
 			map[1,1].playerTime = 0;
 	
 			// Spawn walls
-			map[1,2].type = eCellType.wall;	
-			map[2,2].type = eCellType.wall;
-			map[3,2].type = eCellType.wall;	
-			map[4,2].type = eCellType.wall;
-			map[5,2].type = eCellType.wall;		
+			map[2,3].type = eCellType.wall;
+			map[3,3].type = eCellType.wall;	
+			map[4,3].type = eCellType.wall;
+			map[5,3].type = eCellType.wall;		
+			map[2,4].type = eCellType.block;	
 			map[2,5].type = eCellType.wall;	
-			map[3,5].type = eCellType.wall;	
-			map[4,5].type = eCellType.wall;	
+			map[5,4].type = eCellType.wall;	
 			map[5,5].type = eCellType.wall;	
-			map[6,5].type = eCellType.wall;	
+			map[5,6].type = eCellType.wall;	
 	
-			map[3,1].type = eCellType.block;
-			map[3,6].type = eCellType.block;	
+			//map[3,1].type = eCellType.block;
+			//map[3,6].type = eCellType.block;
+			
+			map[3,4].type = eCellType.key;		
 	
 			// Spawn exit
 			map[6,6].type = eCellType.exit;
 			break;						
-																		
+
+		case 4:		// Retrace with blocks 
+			// Spawn player
+			map[1,1].type = eCellType.player;
+			map[1,1].playerTime = 0;
+	
+			// Spawn walls
+			map[1,2].type = eCellType.wall;
+			map[2,2].type = eCellType.wall;	
+			map[3,2].type = eCellType.wall;
+			map[5,2].type = eCellType.wall;		
+			map[5,3].type = eCellType.wall;	
+			map[3,4].type = eCellType.wall;	
+			map[5,4].type = eCellType.wall;	
+			map[5,5].type = eCellType.wall;	
+			map[5,6].type = eCellType.wall;
+			map[4,6].type = eCellType.wall;	
+	
+			map[4,2].type = eCellType.block;
+			//map[3,6].type = eCellType.block;
+			
+			map[2,5].type = eCellType.key;		
+	
+			// Spawn exit
+			map[6,6].type = eCellType.exit;
+			lastLevel = true;
+			break;																																					
 		}
 												
 		CopyMap( map, mapStart );	// mapStart gets duplicate players added to it as player progresses	
@@ -235,40 +284,47 @@ public class TimeJump : MonoBehaviour
 				turnProgress = -1.0f;
 			}
 		}
+		else if (gameState == eGameState.play)
+		{
+			Time.timeScale *= 0.96f;
+		}
 		else
 		{
-			Time.timeScale = 0.001f;
+			Time.timeScale = 1.0f;
 		}
 		
 		digiNumerals.mainTextureOffset = new Vector2( 0.0f, 0.1f*globalTime );
 		
-		eAction action = eAction.none;
-
-		// Read input, update action accordingly
-		float stickX = Input.GetAxisRaw("Horizontal");
-		float stickY = Input.GetAxisRaw("Vertical");
-		
-		if (stickX < -0.15f)
-			action = eAction.west;
-		else if (stickX > 0.15f)
-			action = eAction.east;
-		else if (stickY > 0.15f)
-			action = eAction.north;
-		else if (stickY < -0.15f)
-			action = eAction.south;
-		else if (Input.GetKeyDown( KeyCode.T ))
-			action = eAction.timejump;
-		else
-			waitForRelease = false;
-		
-		if (action != eAction.none && !waitForRelease)
+		if (turnProgress < 0.0f && gameState==eGameState.play)
 		{
-			waitForRelease = true;
-			RecordAction( action );
-			ProcessTurn();
+			eAction action = eAction.none;
 			
-			turnStartTime = Time.realtimeSinceStartup;
-			turnProgress = 0.0f;
+			// Read input, update action accordingly
+			float stickX = Input.GetAxisRaw("Horizontal");
+			float stickY = Input.GetAxisRaw("Vertical");
+			
+			if (stickX < -0.15f)
+				action = eAction.west;
+			else if (stickX > 0.15f)
+				action = eAction.east;
+			else if (stickY > 0.15f)
+				action = eAction.north;
+			else if (stickY < -0.15f)
+				action = eAction.south;
+			else if (Input.GetKeyDown( KeyCode.T ))
+				action = eAction.timejump;
+			else
+				waitForRelease = false;
+			
+			if (action != eAction.none && !waitForRelease)
+			{
+				waitForRelease = true;
+				RecordAction( action );
+				ProcessTurn();
+				
+				turnStartTime = Time.realtimeSinceStartup;
+				turnProgress = 0.0f;
+			}
 		}
 	}
 	
@@ -313,6 +369,7 @@ public class TimeJump : MonoBehaviour
 			// This is one of your past selves disappearing back into the past
 			mapFuture[x,y].type = eCellType.empty;
 			mapFuture[x,y].playerTime = -1;
+			audio.PlayOneShot(sfxTimeJump);
 			return false;
 		}
 	
@@ -320,6 +377,7 @@ public class TimeJump : MonoBehaviour
 		{
 			Debug.Log( "TimeJump - cell occupied" );
 			// Something is lurking at the beginning of time in the square you want to occupy. Die unexpectedly, or just fail?
+			audio.PlayOneShot(sfxInvalid);
 			return false;	// Fail for now
 		}
 			
@@ -329,22 +387,36 @@ public class TimeJump : MonoBehaviour
 		
 		CopyMap( mapStart, map );
 		CopyMap( mapStart, mapPast );
+		ZeroMapTimes( mapPast );
 		CopyMap( mapStart, mapFuture );
 		
+		audio.PlayOneShot(sfxTimeJump);
 		return true;
 	}
 	
 	bool Move( int fromx, int fromy, int tox, int toy )
 	{
-		if (mapFuture[fromx,fromy].type == eCellType.player && mapFuture[tox,toy].type == eCellType.exit)
+		if (mapFuture[fromx,fromy].type == eCellType.player &&
+			mapFuture[tox,toy].type == eCellType.exit &&
+			hasKey)
 		{
 			Debug.Log("ESCAPED!");
-			gameState = eGameState.win;
+			audio.PlayOneShot(sfxWin);
+			if (lastLevel)
+				gameState = eGameState.finished;
+			else
+				gameState = eGameState.win;
 		}
-		if (mapFuture[tox,toy].type == eCellType.empty || mapFuture[tox,toy].type == eCellType.exit)
-		{
-			Debug.Log("STEP");
-
+		if (mapFuture[tox,toy].type == eCellType.empty ||
+			(mapFuture[tox,toy].type == eCellType.exit && hasKey) ||
+			(mapFuture[tox,toy].type == eCellType.key && mapFuture[fromx,fromy].type == eCellType.player) )
+		{			
+			if (mapFuture[tox,toy].type == eCellType.key)
+			{
+				audio.PlayOneShot(sfxKey);
+				hasKey = true;
+			}
+				
 			// Move cell contents, whatever they are (could be player or block)
 			mapFuture[tox,toy].type 		= map[fromx,fromy].type;
 			mapFuture[tox,toy].playerTime 	= map[fromx,fromy].playerTime;
@@ -363,6 +435,8 @@ public class TimeJump : MonoBehaviour
 			Debug.Log("PUSH");
 			if (Move(tox,toy,tox+tox-fromx,toy+toy-fromy)) // Try to move the block!
 			{
+				audio.PlayOneShot(sfxPush);
+				
 				// Move cell contents, whatever they are (could be player or block)
 				mapFuture[tox,toy].type 		= map[fromx,fromy].type;
 				mapFuture[tox,toy].playerTime 	= map[fromx,fromy].playerTime;
@@ -406,6 +480,7 @@ public class TimeJump : MonoBehaviour
 		globalTime++;
 		if (globalTime >= 10 && gameState == eGameState.play)
 		{
+			audio.PlayOneShot(sfxLose);
 			gameState = eGameState.lose;
 		}
 		
@@ -416,20 +491,25 @@ public class TimeJump : MonoBehaviour
 		switch( gameState )
 		{
 		case eGameState.title:
-			GUI.Box( new Rect(0,0,Screen.width,100), "Timewarp" );
-			if (GUI.Button(new Rect(Screen.width/2-100,300,200,50), "Play"))
+			GUI.Box( new Rect(0,100,Screen.width,100), "C H R O N I C   H Y S T E R E S I S", style );
+			GUI.Box( new Rect(0,170,Screen.width,100), "By Chris Payne for Ludum Dare 27", style );
+			GUI.Box( new Rect(0,500,Screen.width,100), "Use cursor keys, and T to time warp back to start", style );
+			if (GUI.Button(new Rect(0,300,Screen.width,100), "Press Space/Return to Play", style) || Input.GetButtonDown("Jump"))
 			{
+				audio.PlayOneShot(sfxAccept);
 				gameState = eGameState.play;
 				level = startLevel;
+				lastLevel = false;
 				InitLevel();
 			}
 			break;
 		
 		case eGameState.win:
 			DrawGame();
-			GUI.Box( new Rect(0,0,Screen.width,100), "Win!" );
-			if (GUI.Button(new Rect(Screen.width/2-100,300,200,50), "Continue"))
+			GUI.Box( new Rect(0,200,Screen.width,100), "Escaped!", style );
+			if (GUI.Button(new Rect(0,300,Screen.width,100), "Press Space/Return to Continue", style) || Input.GetButtonDown("Jump"))
 			{
+				audio.PlayOneShot(sfxAccept);
 				gameState = eGameState.play;
 				level++;
 				InitLevel();
@@ -438,13 +518,25 @@ public class TimeJump : MonoBehaviour
 			
 		case eGameState.lose:
 			DrawGame();
-			GUI.Box( new Rect(0,0,Screen.width,100), "Lose!" );
-			if (GUI.Button(new Rect(Screen.width/2-100,300,200,50), "Retry"))
+			GUI.Box( new Rect(0,200,Screen.width,100), "Erased from existence!", style );
+			if (GUI.Button(new Rect(0,300,Screen.width,100), "Press Space/Return to Retry", style) || Input.GetButtonDown("Jump"))
 			{
+				audio.PlayOneShot(sfxAccept);
 				gameState = eGameState.play;
 				InitLevel();
 			}
 			break;
+		
+		case eGameState.finished:
+			DrawGame();
+			GUI.Box( new Rect(0,200,Screen.width,100), "Chronic Hysteresis Escaped!", style );
+			GUI.Box( new Rect(0,250,Screen.width,100), "You have mastered creative temporal physics. Use your power wisely.", style );
+			if (GUI.Button(new Rect(0,400,Screen.width,100), "Press Space/Return to Replay", style) || Input.GetButtonDown("Jump"))
+			{
+				audio.PlayOneShot(sfxAccept);
+				gameState = eGameState.title;
+			}
+			break;			
 			
 		default:
 			DrawGame();
@@ -464,6 +556,8 @@ public class TimeJump : MonoBehaviour
 		GUI.DrawTexture( new Rect(originx-expand, originy-expand, cellSize * gridSize + expand*2, cellSize * gridSize + expand*2), texBackground );		
 				
 		Texture tex = null;
+		float randx = Random.Range( -1.0f, 1.0f );
+		float randy = Random.Range( -1.0f, 1.0f );
 	
 		for (int x=0; x<gridSize; x++)
 		{
@@ -478,7 +572,6 @@ public class TimeJump : MonoBehaviour
 					if (mapPast[x,y].playerTime > 0)
 					{
 						xdir = ((mapPast[x,y].playerTime & ~0xf) >> 4)-2;
-						//Debug.Log( "xdir="+xdir );
 						ydir = (mapPast[x,y].playerTime & 0xF)-2;
 					}
 				}
@@ -490,12 +583,14 @@ public class TimeJump : MonoBehaviour
 					break;
 				case eCellType.block:	tex = texBlock;
 					break;
+				case eCellType.key:		tex = texKey;
+					break;
 				case eCellType.player:	tex = texPlayer;
 										if (map[x,y].playerTime < playerTime)
 											tex = texPlayerPast;
 										//GUI.Box( new Rect(x*cellSize+originx, y*cellSize+originy, 20, 20), "" + map[x,y].playerTime );
 					break;
-				case eCellType.exit:	tex = texExit;
+				case eCellType.exit:	tex = hasKey ? texExit : texExitLocked;
 					break;
 				}
 				
@@ -503,8 +598,14 @@ public class TimeJump : MonoBehaviour
 				{
 					float animx = (float)xdir*cellSize*turnProgress;
 					float animy = (float)ydir*cellSize*turnProgress;
-					GUI.DrawTexture( new Rect(x*cellSize+originx+animx, y*cellSize+originy+animy, cellSize, cellSize), tex );
 					
+					if (gameState != eGameState.win)
+					{
+						animx += randx * Mathf.Max(0.0f,(float)globalTime-6.0f);
+						animy += randy * Mathf.Max(0.0f,(float)globalTime-6.0f);
+					}
+					
+					GUI.DrawTexture( new Rect(x*cellSize+originx+animx, y*cellSize+originy+animy, cellSize, cellSize), tex );
 				}
 			}
 		}
